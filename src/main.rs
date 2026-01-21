@@ -2,27 +2,40 @@ use std::env;
 use std::path::{Path, PathBuf};
 use image::{ImageReader, RgbImage};
 use std::error::Error;
+use std::fs;
 
-fn main()  -> Result<(), Box<dyn std::error::Error>> {
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
-        eprintln!("Usage: crypt-files <image.png> [file_to_hide]");
+    if args.len() < 3 {
+        eprintln!("Usage: crypt-files <image.png> <file_to_hide>");
         std::process::exit(1);
     }
 
     let image_path = &args[1];
-    let file_path = args.get(2);
+    let file_path = &args[2];
 
     let mut img = get_bytes(image_path)?;
     let data = img.as_mut();
 
-    if let Some(file) = file_path {
-        println!("File to hide: {}", file);
-    } else {
-        println!("No file provided yet.");
+    let file_bytes = fs::read(file_path)?;
+
+    if file_bytes.len() * 8 > data.len() {
+        eprintln!("File is too large to hide in this image.");
+        std::process::exit(1);
     }
 
+    let mut data_index = 0;
+    for byte in file_bytes {
+        for bit in byte_to_bits(byte) {
+            change_lsb(data, data_index, bit);
+            data_index += 1;
+        }
+    }
+
+    println!("{:08b}", img.as_raw()[0]);
+    save_image(&img, image_path)?;
     Ok(())
 }
 
@@ -54,4 +67,17 @@ fn save_image(image: &RgbImage, old_path: &str) -> Result<(), Box<dyn Error>> {
     image.save(&new_path)?;
     println!("Saved as {:?}", new_path);
     Ok(())
+}
+
+fn byte_to_bits(byte: u8) -> [bool; 8] {
+    [
+        byte & 0b1000_0000 != 0,
+        byte & 0b0100_0000 != 0,
+        byte & 0b0010_0000 != 0,
+        byte & 0b0001_0000 != 0,
+        byte & 0b0000_1000 != 0,
+        byte & 0b0000_0100 != 0,
+        byte & 0b0000_0010 != 0,
+        byte & 0b0000_0001 != 0,
+    ]
 }
