@@ -2,7 +2,7 @@
 
 Audit date: 2026-04-30  
 Scope: `src/main.rs`, `Cargo.toml`, README  
-Branch: `autonomous/20260430-030139`
+Branch: `prior-branch`
 
 ---
 
